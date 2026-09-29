@@ -1,0 +1,8 @@
+[project]
+name = "file-manipulation-pipeline"
+version = "0.1.0"
+description = "Office file-manipulation task synthesis pipeline (uv workspace root: coordinator + workers)"
+requires-python = ">=3.11"
+
+[tool.uv.workspace]
+members = ["pipeline-coordinator", "office-files-pipeline"]

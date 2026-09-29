@@ -1,0 +1,8 @@
+{
+  "assignments": [
+    {
+      "template_id": "task_types/b5_protocol_driven_data_entry.md",
+      "rationale": "This file is a blank Excel spreadsheet with 53 predefined column headers (samp_name, project_name, host_subject_id, host_age, host_sex, host_disease_stat, host_body_site, host_genotype, chem_administration, etc.) defining the structured schema for human-associated sample metadata under the Genomics Standards Consortium MIxS standard. It matches the B5 reference file type of a partially pre-built or blank target template that a worker must populate by extracting values from multiple source documents (sample collection logs, clinical records, genotyping reports, lab notebooks) and applying domain protocols to determine correct field values. Many fields require protocol-driven decisions: mapping clinical observations to controlled vocabularies for disease status, body site, and phenotype; determining medication codes from administration records; and applying sample handling rules to storage duration and temperature fields."
+    }
+  ]
+}

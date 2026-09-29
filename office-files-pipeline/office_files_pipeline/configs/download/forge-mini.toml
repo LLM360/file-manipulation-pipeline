@@ -1,0 +1,52 @@
+# office-files-pipeline/office_files_pipeline/configs/download/forge-mini.toml
+#
+# Download step TOML — selected by top-level `step = "download"` at
+# dispatch (config.py::load_config_from_toml).
+#
+# Single-stage cycle: cowbox+forge against the model endpoint tunneled to
+# localhost:8000. The agent fetches one file from the web and writes
+# either `.done` (with file path) on success or `.no_file` on intentional
+# skip (file >100MB or unfetchable). The worker validates which marker
+# the agent wrote and pushes the entire work_dir to the dump tree.
+#
+# Before deployment, fill in the MODEL_ID placeholder in the cmd strings
+# with envsubst and install the result as /root/ofpipe.toml
+# (see docs/operations.md).
+
+step        = "download"
+concurrency = 175
+output_dir  = "/root/download-output"
+max_retries = 10
+failure_log_path = "/root/pipeline-failures.jsonl"
+
+[client]
+coordinator_url = "http://127.0.0.1:8100"
+rsync_host      = "127.0.0.1"
+rsync_port      = 8873
+
+[[stages]]
+name        = "download_stage1"
+prompt_file = "prompts/download_prompt.md"
+timeout     = 3600
+cmd = """
+env \
+  FORGE_SESSION__PROVIDER_ID=openai_compatible \
+  FORGE_SESSION__MODEL_ID=${MODEL_ID} \
+  FORGE_SESSION__PROVIDER__URL=http://localhost:8000/v1 \
+  FORGE_COMPACT__TOKEN_THRESHOLD=200000 \
+  FORGE_COMPACT__MESSAGE_THRESHOLD=200000 \
+  FORGE_REASONING__ENABLED=true \
+  FORGE_REASONING__EFFORT=high \
+  FORGE_MAX_REQUESTS_PER_TURN=500 \
+  FORGE_MAX_TOOL_FAILURE_PER_TURN=500 \
+  FORGE_MAX_TOKENS=200000 \
+  FORGE_TOOL_TIMEOUT_SECS=600 \
+cowbox \
+  --hide {output_dir} \
+  --rw {work_dir} \
+  --rw /root/.cache/uv \
+  --rw /root/.npm \
+  --rw /root/forge \
+  -- \
+  forge -C {work_dir} -p {prompt}
+"""

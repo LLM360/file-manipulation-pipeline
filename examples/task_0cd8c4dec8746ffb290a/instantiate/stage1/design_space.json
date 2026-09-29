@@ -1,0 +1,76 @@
+{
+  "source_to_field_mapping_complexity": {
+    "values": [
+      "single_source_direct",
+      "multi_source_overlap",
+      "partially_structured",
+      "source_gaps_with_inference"
+    ],
+    "behavioral": true,
+    "rationale": "The HumanAssociated template is a blank 53-column schema; how many source documents the worker must consult and whether they overlap, conflict, or leave gaps changes which files are opened and whether priority reasoning is needed."
+  },
+  "controlled_vocabulary_fidelity": {
+    "values": [
+      "verbatim_passthrough",
+      "standard_term_mapping",
+      "strict_ontology_conformance"
+    ],
+    "behavioral": true,
+    "rationale": "Many MIxS fields expect controlled vocabularies (e.g., body site, disease status); the degree of normalization changes whether the runner copies text or remaps it to ontology terms, producing structurally different cell contents."
+  },
+  "pregnancy_subcohort_logic": {
+    "values": [
+      "n_a_general_cohort",
+      "conditional_population",
+      "mandatory_maternity_study"
+    ],
+    "behavioral": true,
+    "rationale": "Four columns in this template (gestation_state, maternal_health_stat, foetal_health_stat, amniotic_fluid_color) are pregnancy-specific; whether the runner skips them, conditionally populates them, or treats them as primary changes which source sections are consulted and which columns are filled."
+  },
+  "missing_data_semantics": {
+    "values": [
+      "blank_for_missing",
+      "mixs_na_vocabulary",
+      "structured_absence_flags"
+    ],
+    "behavioral": true,
+    "rationale": "MIxS conventions prescribe specific absence terms (not collected, not applicable, missing, restricted access); the runner's strategy for absent data changes whether cells are empty, carry NA vocabulary, or trigger extra documentation columns."
+  },
+  "validation_and_derived_fields_scope": {
+    "values": [
+      "populate_only",
+      "compute_derived_fields",
+      "full_validation_plus_derived"
+    ],
+    "behavioral": true,
+    "rationale": "The template contains two embedded data-validation dropdowns (urine_collect_meth, oxy_stat_samp) and columns that can be cross-derived (BMI from height/weight, gestation trimester from gestation_state); the runner either transcribes, computes, or computes plus validates against the dropdowns."
+  },
+  "deliverable_completeness_scope": {
+    "values": [
+      "minimal_mandatory",
+      "study_relevant_complete",
+      "full_schema_all_fifty_three"
+    ],
+    "behavioral": true,
+    "rationale": "The template has 53 columns but MIxS only mandates a handful; the scope changes how many columns the runner touches, whether N/A annotations proliferate, and how the source documents are scanned."
+  },
+  "secondary_documentation": {
+    "values": [
+      "none",
+      "field_mapping_readme",
+      "submission_metadata_json"
+    ],
+    "behavioral": true,
+    "rationale": "A populated MIxS workbook alone is ambiguous about provenance; additional deliverables change whether the runner produces a second artifact explaining mappings, source choices, and inference decisions."
+  },
+  "persona_role": {
+    "values": [
+      "clinical_research_coordinator",
+      "bioinformatician",
+      "lab_manager",
+      "data_curator"
+    ],
+    "behavioral": false,
+    "rationale": "Surface role framing changes voice and jargon but the core task of populating the blank HumanAssociated template from source documents remains the same."
+  }
+}

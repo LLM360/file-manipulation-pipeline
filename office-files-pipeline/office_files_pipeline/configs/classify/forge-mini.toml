@@ -1,0 +1,51 @@
+# office-files-pipeline/office_files_pipeline/configs/classify/forge-mini.toml
+#
+# Classify step TOML — selected by top-level `step = "classify"` at
+# dispatch. Single-stage cycle: cowbox+forge reads the source file (pulled
+# from office-files-dump in the worker's pull phase, with metadata
+# excluded so only task.json + the source file are visible), classifies
+# it against the taxonomy in office_files_pipeline/metatemplates/task_types/,
+# and writes `assignments.json` + `annotation.md` + `.done_classify` (or
+# `.no_file` as escape valve).
+#
+# The metatemplates dir lives inside the package install, readable
+# by cowbox via default-read (no explicit --ro needed; only --hide paths
+# are blocked). The classify cycle injects its absolute path into the
+# prompt via the {templates_dir} placeholder.
+#
+# Before deployment, fill in the MODEL_ID placeholder in the cmd strings
+# with envsubst and install the result as /root/ofpipe.toml
+# (see docs/operations.md).
+
+step        = "classify"
+concurrency = 175
+output_dir  = "/root/classify-output"
+max_retries = 10
+failure_log_path = "/root/pipeline-failures.jsonl"
+
+[client]
+coordinator_url = "http://127.0.0.1:8100"
+rsync_host      = "127.0.0.1"
+rsync_port      = 8873
+
+[[stages]]
+name        = "classify_stage1"
+prompt_file = "prompts/classify_prompt.md"
+timeout     = 3600
+cmd = """
+env \
+  FORGE_SESSION__PROVIDER_ID=openai_compatible \
+  FORGE_SESSION__MODEL_ID=${MODEL_ID} \
+  FORGE_SESSION__PROVIDER__URL=http://localhost:8000/v1 \
+  FORGE_MAX_REQUESTS_PER_TURN=500 \
+  FORGE_MAX_TOOL_FAILURE_PER_TURN=500 \
+  FORGE_TOOL_TIMEOUT_SECS=600 \
+cowbox \
+  --hide {output_dir} \
+  --rw {work_dir} \
+  --rw /root/.cache/uv \
+  --rw /root/.npm \
+  --rw /root/forge \
+  -- \
+  forge -C {work_dir} -p {prompt}
+"""

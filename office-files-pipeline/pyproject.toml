@@ -1,0 +1,49 @@
+[project]
+name = "office-files-pipeline"
+version = "0.1.0"
+description = "Async workers for the office-files download, classify, instantiate and rollout steps"
+requires-python = ">=3.11"
+dependencies = [
+    "polars",
+    "tenacity",
+    "pydantic-settings[toml]",
+    "rich",
+    "jsonschema>=4.20.0",
+    "httpx",
+    # cowbox sandboxes every agent run; pinned to a commit.
+    "cowbox @ git+https://github.com/LLM360/cowbox.git@a032d7f683bbddf4809ac257d9d4dac5c931e01a",
+    # Office and data libraries for the agents: instantiate stages link this
+    # venv into their inputs.
+    "openpyxl",
+    "xlsxwriter",
+    "python-docx",
+    "python-pptx",
+    "pymupdf",
+    "pdfplumber",
+    "pandas",
+    "Pillow",
+    "matplotlib",
+    "beautifulsoup4",
+    "lxml",
+    "weasyprint",
+]
+
+[project.scripts]
+office-files-pipeline = "office_files_pipeline.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+# Required to accept the `cowbox @ git+https://...` direct reference in deps.
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["office_files_pipeline"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"office_files_pipeline/configs" = "office_files_pipeline/configs"
+"office_files_pipeline/metatemplates" = "office_files_pipeline/metatemplates"
+"office_files_pipeline/rollout_static" = "office_files_pipeline/rollout_static"
+"office_files_pipeline/prompts" = "office_files_pipeline/prompts"

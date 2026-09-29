@@ -1,0 +1,80 @@
+# office-files-pipeline/office_files_pipeline/configs/rollout/forge-mini.toml
+#
+# Rollout step — two-stage cycle with per-task system-prompt customization.
+# Stage 1 edits forge's rendered default system prompt; stage 2 runs the
+# actual rollout with FORGE_SYSTEM_PROMPT_FILE pointing at stage 1's output.
+# Selected by the top-level `step` field at dispatch.
+#
+# Before deployment, fill in the MODEL_ID placeholder in the cmd strings
+# with envsubst and install the result as /root/ofpipe.toml
+# (see docs/operations.md).
+
+step        = "rollout"
+concurrency = 125
+output_dir  = "/root/rollout-output"
+max_retries = 3
+skip_stage1_prob = 0.05  # baseline arm: this fraction skips stage 1 and keeps the original prompt
+
+# Top-level cmd for the prepare-time render subprocess.
+# Stdout is captured by `prepare_rollout` into prompt_customize/system_prompt_original.md.
+render_cmd = """
+env \
+  FORGE_SESSION__PROVIDER_ID=openai_compatible \
+  FORGE_SESSION__MODEL_ID=${MODEL_ID} \
+  FORGE_SESSION__PROVIDER__URL=http://localhost:8000/v1 \
+  FORGE_MAX_REQUESTS_PER_TURN=500 \
+  FORGE_MAX_TOOL_FAILURE_PER_TURN=500 \
+  FORGE_TOOL_TIMEOUT_SECS=600 \
+forge prompt render -C {work_dir}/work --agent forge
+"""
+
+[client]
+coordinator_url = "http://127.0.0.1:8100"
+rsync_host      = "127.0.0.1"
+rsync_port      = 8873
+
+[[stages]]
+name    = "rollout_stage1"
+timeout = 3600
+cmd = """
+env \
+  FORGE_SESSION__PROVIDER_ID=openai_compatible \
+  FORGE_SESSION__MODEL_ID=${MODEL_ID} \
+  FORGE_SESSION__PROVIDER__URL=http://localhost:8000/v1 \
+  FORGE_MAX_REQUESTS_PER_TURN=500 \
+  FORGE_MAX_TOOL_FAILURE_PER_TURN=500 \
+  FORGE_TOOL_TIMEOUT_SECS=600 \
+cowbox \
+  --hide {output_dir} \
+  --rw {work_dir}/prompt_customize \
+  --rw /root/.cache/uv \
+  --rw /root/.npm \
+  --rw /root/forge \
+  -- \
+  forge -C {work_dir}/prompt_customize -p {prompt}
+"""
+
+[[stages]]
+name    = "rollout_stage2"
+timeout = 5400
+cmd = """
+env \
+  FORGE_SESSION__PROVIDER_ID=openai_compatible \
+  FORGE_SESSION__MODEL_ID=${MODEL_ID} \
+  FORGE_SESSION__PROVIDER__URL=http://localhost:8000/v1 \
+  FORGE_MAX_REQUESTS_PER_TURN=500 \
+  FORGE_MAX_TOOL_FAILURE_PER_TURN=500 \
+  FORGE_TOOL_TIMEOUT_SECS=600 \
+  FORGE_TRACE_FILE={work_dir}/trace/trace.jsonl \
+  FORGE_SYSTEM_PROMPT_FILE={work_dir}/prompt_customize/system_prompt.md \
+cowbox \
+  --hide {output_dir} \
+  --rw {work_dir}/work \
+  --rw {work_dir}/trace \
+  --rw {work_dir}/prompt_customize \
+  --rw /root/.cache/uv \
+  --rw /root/.npm \
+  --rw /root/forge \
+  -- \
+  forge -C {work_dir}/work -p {prompt}
+"""

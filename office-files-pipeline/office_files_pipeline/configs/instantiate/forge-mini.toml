@@ -1,0 +1,74 @@
+# office-files-pipeline/office_files_pipeline/configs/instantiate/forge-mini.toml
+#
+# Instantiate step TOML. Two-stage cowbox+forge pipeline against the model
+# endpoint tunneled to localhost:8000 by the coordinator's autossh
+# supervisor. Selected by the top-level `step` field at dispatch.
+#
+# Per-stage trace dirs live at work_dir top level (`trace_stage{1,2}/`) so
+# they survive stage_dir wipes on retry. Each stage's cowbox command
+# mounts only its own trace dir read-write under the --hide {output_dir}
+# umbrella, keeping each stage's view scoped to its own stage_dir + its
+# own trace. The push flattens each dir's trace.jsonl to trace_stage{1,2}.jsonl.
+#
+# Before deployment, fill in the MODEL_ID placeholder in the cmd strings
+# with envsubst and install the result as /root/ofpipe.toml
+# (see docs/operations.md).
+
+step                = "instantiate"            # selects InstantiateConfig at dispatch
+concurrency         = 90                       # per-worker coroutines
+output_dir          = "/root/instantiate-output"
+max_retries         = 3                        # top-level per-attempt cap
+diversity_threshold = 100                      # available to prompts as {diversity_threshold}; cast.py enforces its own floor
+
+[client]
+coordinator_url = "http://127.0.0.1:8100"
+rsync_host      = "127.0.0.1"
+rsync_port      = 8873
+
+[[stages]]
+name = "stage1"
+prompt_file = "prompts/instantiate_stage1.md"
+timeout = 3600
+cmd = """
+env \
+  FORGE_SESSION__PROVIDER_ID=openai_compatible \
+  FORGE_SESSION__MODEL_ID=${MODEL_ID} \
+  FORGE_SESSION__PROVIDER__URL=http://localhost:8000/v1 \
+  FORGE_MAX_REQUESTS_PER_TURN=500 \
+  FORGE_MAX_TOOL_FAILURE_PER_TURN=500 \
+  FORGE_TOOL_TIMEOUT_SECS=600 \
+  FORGE_TRACE_FILE={work_dir}/trace_stage1/trace.jsonl \
+cowbox \
+  --hide {output_dir} \
+  --rw {stage_dir} \
+  --rw {work_dir}/trace_stage1 \
+  --rw /root/.cache/uv \
+  --rw /root/.npm \
+  --rw /root/forge \
+  -- \
+  forge -C {stage_dir} -p {prompt}
+"""
+
+[[stages]]
+name = "stage2"
+prompt_file = "prompts/instantiate_stage2.md"
+timeout = 4200
+cmd = """
+env \
+  FORGE_SESSION__PROVIDER_ID=openai_compatible \
+  FORGE_SESSION__MODEL_ID=${MODEL_ID} \
+  FORGE_SESSION__PROVIDER__URL=http://localhost:8000/v1 \
+  FORGE_MAX_REQUESTS_PER_TURN=500 \
+  FORGE_MAX_TOOL_FAILURE_PER_TURN=500 \
+  FORGE_TOOL_TIMEOUT_SECS=600 \
+  FORGE_TRACE_FILE={work_dir}/trace_stage2/trace.jsonl \
+cowbox \
+  --hide {output_dir} \
+  --rw {stage_dir} \
+  --rw {work_dir}/trace_stage2 \
+  --rw /root/.cache/uv \
+  --rw /root/.npm \
+  --rw /root/forge \
+  -- \
+  forge -C {stage_dir} -p {prompt}
+"""
